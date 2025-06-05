@@ -99,11 +99,13 @@ int main(int argc, char* argv[]){
         }
       }
 
+      printf("頻度表\n\n");
+
 for (i=0; i<4; i++){
     for (j=0; j<10; j++){
     printf(" %d", FLQ[i][j]);
   }
-  printf("\n");
+  printf("\n\n");
 }
 
 i, j = 0;
@@ -130,12 +132,12 @@ float p[4][10] = {0};
         }
       }
 
-float flq_sum = 2.0*(7519429+4637676);
+float background = 2.0*(7519429+4637676);
 float q[4] = {0};
-q[0] = 7519429/flq_sum;
-q[1] = 4637676/flq_sum;  
-q[2] = 4637676/flq_sum;
-q[3] = 7519429/flq_sum; 
+q[0] = 7519429/background;
+q[1] = 4637676/background;  
+q[2] = 4637676/background;
+q[3] = 7519429/background; 
 
 i, j = 0;
   
@@ -145,7 +147,7 @@ for(i=0; i<4; i++){
      OddFLQ[i][j] = log10(p[i][j]/q[i]);
   }
 }
-
+printf("対数オッズスコア\n\n");
 printf("p=\n");
     
     for (i=0; i<4; i++){
@@ -165,6 +167,13 @@ for (i=0; i<4; i++){
 
   const int motif_len = 10;
   double threshold = 2.0;
+
+   // スコア分布計算のための追加コード 発展課題
+    double all_scores[2000];
+    int score_count = 0;
+    double sum_scores = 0.0;
+    double sum_sq_diff_scores = 0.0; // 差の二乗の合計
+    
 
   for (int g = 0; g < gene_num; g++) {
     char* prom = g_pro[g].seq;
@@ -188,6 +197,18 @@ for (i=0; i<4; i++){
         score += OddFLQ[row][j];
       }
 
+      // 有効なスコアであれば全て配列に格納 (閾値にかかわらず)
+            if (valid) {
+                if (score_count < 2000) { 
+                    all_scores[score_count] = score;
+                    sum_scores += score; // 平均計算のためのスコアを合計
+                    score_count++;
+                } else {
+                    break; 
+                }
+            }
+
+
       if (valid && score >= threshold) {
         printf("pro:%s\n", g_pro[g].name);
         printf("pos:%d\n", i);
@@ -199,5 +220,27 @@ for (i=0; i<4; i++){
       }
     }
   }
+
+   // --- ここからスコア分布の平均と標準偏差の計算と表示の追加コードです ---
+    printf("--- スコア分布の統計情報 ---\n");
+    if (score_count > 0) {
+        double mean = sum_scores / score_count; // 平均の計算
+        printf("平均 (Mean): %.4f\n", mean);
+
+        // 標準偏差の計算
+        for (int k = 0; k < score_count; k++) {
+            sum_sq_diff_scores += (all_scores[k] - mean) * (all_scores[k] - mean);
+        }
+        // 分散の計算 (不偏分散ではなく、標本分散を使う)
+        double variance = sum_sq_diff_scores / score_count; 
+        double std_dev = sqrt(variance); // 標準偏差
+        printf("標準偏差 (Standard Deviation): %.4f\n", std_dev);
+    } else {
+        printf("有効なスコアがありませんでした。\n");
+    }
+    printf("\n");
+    // --- ここまでスコア分布の平均と標準偏差の計算と表示の追加コードです ---
+
+
   return 0;
 }
