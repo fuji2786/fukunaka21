@@ -6,8 +6,6 @@
 #define BUFSIZE 1024 //ファイルから読み込む一行の最大文字数
 #define MAX_SEQ_NUM 30 //一つの転写因子に対して与えられる結合部位配列の最大数
 #define MAX_GENE_NUM 8 /*与えられるプロモータ領域の最大遺伝子数*/
-// 全プロモーター配列の長さ合計をMAX_GENE_NUM * BUFSIZE と仮定し、
-// それをモチーフ長で割った最大スコア数。安全のため少し大きめに設定。
 #define MAX_TOTAL_SCORES 10000
 
 
@@ -77,13 +75,9 @@ int main(int argc, char* argv[]){
     int seq_num = read_multi_seq(argv[1]); //１番目の引数で指定した転写因子の複数の結合部位配列を読み込む
 
     printf("motif region:\n");
-    // モチーフの長さをここで取得する
     int motif_len = 0; 
     if (seq_num > 0) {
         motif_len = strlen(g_motif[0]); // 読み込んだ最初のモチーフの長さを取得
-        // 全てのモチーフが同じ長さであることを前提とします。
-        // 異なる長さのモチーフが混在する場合は、別途処理が必要ですが、
-        // この課題では統一されていると仮定します。
         printf("検出されたモチーフの長さ: %d\n\n", motif_len); // 追加: 検出されたモチーフ長を表示
         for(int i = 0; i < seq_num; i++){
             printf("%s\n",g_motif[i]); //読み込んだ転写因子の結合部位配列を表示
@@ -103,15 +97,13 @@ int main(int argc, char* argv[]){
     }
     printf("\n");
 
-    // FLQのサイズをmotif_lenに合わせる（動的配列ではないので、BUFSIZEなど十分大きいサイズで定義）
-    // モチーフの最大長はBUFSIZEなので、FLQもBUFSIZEで定義します。
-    int FLQ[4][BUFSIZE] = {0}; // BUFSIZEは1024なので十分なサイズ
+    int FLQ[4][BUFSIZE] = {0}; 
 
-    int i, j, s, t = 0; // ループ変数i,jは、後で再利用されるため、初期化をここでしない。
+    int i, j, s, t = 0; 
     
     // 頻度表の計算
     for(s=0; s<seq_num; s++){
-        for(t=0; t<motif_len; t++){ // ここを motif_len に変更
+        for(t=0; t<motif_len; t++){ 
             if (g_motif[s][t]=='A') {
                 FLQ[0][t] += 1;
             }
@@ -128,15 +120,15 @@ int main(int argc, char* argv[]){
     }
 
     // 頻度表の出力
-    printf("--- 頻度表 ---\n"); // 追加：見出し
-    printf("  "); // 列番号のヘッダー
-    for (j=0; j<motif_len; j++){ // ここを motif_len に変更
+    printf("--- 頻度表 ---\n");
+    printf("  "); 
+    for (j=0; j<motif_len; j++){ 
         printf("%d ", j + 1);
     }
     printf("\n");
 
     for (i=0; i<4; i++){
-        for (j=0; j<motif_len; j++){ // ここを motif_len に変更
+        for (j=0; j<motif_len; j++){ 
             printf(" %d", FLQ[i][j]);
         }
         printf("\n\n");
@@ -144,64 +136,64 @@ int main(int argc, char* argv[]){
 
     // 擬似頻度1の加算
     for (i=0; i<4; i++){
-        for(j=0; j<motif_len; j++){ // ここを motif_len に変更
+        for(j=0; j<motif_len; j++){ 
             FLQ[i][j] += 1;
         }
     }
 
-    int row_sum[BUFSIZE] = {0}; // サイズをBUFSIZEに
-    for (j=0; j<motif_len; j++){ // ここを motif_len に変更
+    int row_sum[BUFSIZE] = {0}; 
+    for (j=0; j<motif_len; j++){
         for(i=0; i<4; i++){
             row_sum[j] += FLQ[i][j];
         }
     }
 
-    float p[4][BUFSIZE] = {0}; // サイズをBUFSIZEに
+    float p[4][BUFSIZE] = {0}; 
 
     // p_i(x|M) の計算 (擬似頻度を加味した確率)
     for (i=0; i<4; i++){
-        for(j=0; j<motif_len; j++){ // ここを motif_len に変更
-            p[i][j] = (float)FLQ[i][j]/(seq_num+4.0); // FLQ[i][j] を float にキャストして正確な浮動小数点除算
+        for(j=0; j<motif_len; j++){ 
+            p[i][j] = (float)FLQ[i][j]/(seq_num+4.0); 
         }
     }
 
-    float total_background_sum = 7519429.0f + 4637676.0f + 4637676.0f + 7519429.0f; // floatリテラルを使用
+    float total_background_sum = 7519429.0f + 4637676.0f + 4637676.0f + 7519429.0f; 
     float q[4] = {0};
     q[0] = 7519429.0f/total_background_sum; // Aのバックグラウンド確率
     q[1] = 4637676.0f/total_background_sum; // Cのバックグラウンド確率
     q[2] = 4637676.0f/total_background_sum; // Gのバックグラウンド確率
     q[3] = 7519429.0f/total_background_sum; // Tのバックグラウンド確率
 
-    double OddFLQ[4][BUFSIZE] = {0}; // サイズをBUFSIZEに
+    double OddFLQ[4][BUFSIZE] = {0}; 
     for(i=0; i<4; i++){
-        for(j=0; j<motif_len; j++){ // ここを motif_len に変更
+        for(j=0; j<motif_len; j++){ 
             OddFLQ[i][j] = log10(p[i][j]/q[i]);
         }
     }
     printf("p=\n"); // p行列の出力
     for (i=0; i<4; i++){
-        for (j=0; j<motif_len; j++){ // ここを motif_len に変更
+        for (j=0; j<motif_len; j++){ 
             printf(" %f", p[i][j]);
         }
         printf("\n");
     }
-    printf("\n"); // 追加：改行
+    printf("\n");
 
-    printf("--- 対数オッズスコア行列 ---\n"); // 追加：見出し
-    printf("  "); // 列番号のヘッダー
-    for (j=0; j<motif_len; j++){ // ここを motif_len に変更
+    printf("--- 対数オッズスコア行列 ---\n"); 
+    printf("  "); 
+    for (j=0; j<motif_len; j++){ 
         printf("%d ", j + 1);
     }
     printf("\n");
     for (i=0; i<4; i++){
-        for (j=0; j<motif_len; j++){ // ここを motif_len に変更
+        for (j=0; j<motif_len; j++){ 
             printf(" %f", OddFLQ[i][j]);
         }
         printf("\n");
     }
     printf("\n"); // 追加：改行
 
-    printf("Motif: MATa1\n\n");  // モチーフ名
+    printf("Motif: MATa1\n\n");  // モチーフ名(モチーフ名は手入力で変える)
 
     double threshold = 2.0; // 閾値
 
@@ -216,11 +208,11 @@ int main(int argc, char* argv[]){
         char* prom = g_pro[g].seq;
         int prom_len = strlen(prom);
 
-        for (int i_prom_pos = 0; i_prom_pos <= prom_len - motif_len; i_prom_pos++) { // ループ変数名を変更して重複を避ける
+        for (int i_prom_pos = 0; i_prom_pos <= prom_len - motif_len; i_prom_pos++) { 
             double score = 0.0;
             int valid = 1;
 
-            for (int j_motif_pos = 0; j_motif_pos < motif_len; j_motif_pos++) { // ループ変数名を変更して重複を避ける
+            for (int j_motif_pos = 0; j_motif_pos < motif_len; j_motif_pos++) { 
                 char base = prom[i_prom_pos + j_motif_pos];
                 int row;
                 if (base == 'A') row = 0;
@@ -234,16 +226,14 @@ int main(int argc, char* argv[]){
                 score += OddFLQ[row][j_motif_pos];
             }
 
-            // 有効なスコアであれば全て配列に格納 (閾値にかかわらず)
+            // 有効なスコアであれば全て配列に格納
             if (valid) {
-                if (score_count < MAX_TOTAL_SCORES) { // 配列の範囲チェック
+                if (score_count < MAX_TOTAL_SCORES) { 
                     all_scores[score_count] = score;
                     sum_scores += score; // 平均計算のためにスコアを合計
                     score_count++;
                 } else {
                     fprintf(stderr, "警告: スコア配列が上限に達しました。一部のスコアは記録されません。\n");
-                    // このプロモーターの残りの部分をスキップするか、プログラムを終了するかは要検討
-                    // ここでは、警告を出して処理を続けます
                     break; 
                 }
             }
@@ -271,7 +261,7 @@ int main(int argc, char* argv[]){
         for (int k = 0; k < score_count; k++) {
             sum_sq_diff_scores += (all_scores[k] - mean) * (all_scores[k] - mean);
         }
-        // 分散の計算 (不偏分散ではなく、標本分散を使う)
+        // 分散の計算 
         double variance = sum_sq_diff_scores / score_count; 
         double std_dev = sqrt(variance); // 標準偏差
         printf("標準偏差 (Standard Deviation): %.4f\n", std_dev);
